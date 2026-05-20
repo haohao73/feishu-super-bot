@@ -115,17 +115,17 @@ public class ApprovalReminderService {
     // 入口2：定时任务 → 查表 + 催办
     // ================================================================
 
-    /** 每 10 秒执行（测试用，上线改回 5 分钟） */
-    @Scheduled(fixedRate = 10000)
+    /** 每 10 分钟执行 */
+    @Scheduled(cron = "0 */10 * * * *")
     public void checkAndRemind() {
-        // 筛出该催的：待审批 + 提醒次数 < 5 + 距上次提醒 > 30 秒（测试，上线改回 1 小时）
+        // 筛出该催的：待审批 + 提醒次数 < 5 + 距上次提醒 > 1 小时
         List<BotApprovalReminder> toRemind = reminderMapper.selectList(
                 new LambdaQueryWrapper<BotApprovalReminder>()
                         .eq(BotApprovalReminder::getStatus, 1)
                         .lt(BotApprovalReminder::getRemindCount, 5)
                         .and(w -> w.isNull(BotApprovalReminder::getLastRemindTime)
                                 .or().lt(BotApprovalReminder::getLastRemindTime,
-                                        LocalDateTime.now().minusSeconds(30))));
+                                        LocalDateTime.now().minusHours(1))));
 
         if (toRemind.isEmpty()) {
             log.debug("审批催办：无需提醒");
