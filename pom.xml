@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.bluemountain</groupId>
+    <artifactId>feishu-bot</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>Feishu Super Bot</name>
+    <description>飞书超级助手机器人</description>
+
+    <modules>
+        <module>feishu-bot-common</module>
+        <module>feishu-bot-infrastructure</module>
+        <module>feishu-bot-auth</module>
+        <module>feishu-bot-plugin</module>
+        <module>feishu-bot-integration</module>
+        <module>feishu-bot-core</module>
+        <module>feishu-bot-api</module>
+    </modules>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.3.6</version>
+        <relativePath/>
+    </parent>
+
+    <properties>
+        <java.version>17</java.version>
+        <mybatis-plus.version>3.5.9</mybatis-plus.version>
+        <hutool.version>5.8.34</hutool.version>
+        <mapstruct.version>1.5.5.Final</mapstruct.version>
+        <redisson.version>3.40.2</redisson.version>
+        <jjwt.version>0.12.6</jjwt.version>
+        <jgit.version>6.10.0.202406032230-r</jgit.version>
+        <gitlab4j.version>6.0.0-rc5</gitlab4j.version>
+        <lark-sdk.version>2.27.1</lark-sdk.version>
+        <spring-ai.version>1.0.0-M6</spring-ai.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- ========== 内部模块 ========== -->
+            <dependency>
+                <groupId>com.bluemountain</groupId>
+                <artifactId>feishu-bot-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.bluemountain</groupId>
+                <artifactId>feishu-bot-infrastructure</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.bluemountain</groupId>
+                <artifactId>feishu-bot-auth</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.bluemountain</groupId>
+                <artifactId>feishu-bot-plugin</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.bluemountain</groupId>
+                <artifactId>feishu-bot-integration</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.bluemountain</groupId>
+                <artifactId>feishu-bot-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- ========== MyBatis-Plus ========== -->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+
+            <!-- ========== Hutool ========== -->
+            <dependency>
+                <groupId>cn.hutool</groupId>
+                <artifactId>hutool-all</artifactId>
+                <version>${hutool.version}</version>
+            </dependency>
+
+            <!-- ========== MapStruct ========== -->
+            <dependency>
+                <groupId>org.mapstruct</groupId>
+                <artifactId>mapstruct</artifactId>
+                <version>${mapstruct.version}</version>
+            </dependency>
+
+            <!-- ========== Redisson ========== -->
+            <dependency>
+                <groupId>org.redisson</groupId>
+                <artifactId>redisson-spring-boot-starter</artifactId>
+                <version>${redisson.version}</version>
+            </dependency>
+
+            <!-- ========== JWT ========== -->
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-api</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-impl</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-jackson</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+
+            <!-- ========== JGit ========== -->
+            <dependency>
+                <groupId>org.eclipse.jgit</groupId>
+                <artifactId>org.eclipse.jgit</artifactId>
+                <version>${jgit.version}</version>
+            </dependency>
+
+            <!-- ========== GitLab4J ========== -->
+            <!--
+            TODO：GitLab4J 6.0.0-rc5 尚未发布到 Maven Central，后续需要 Git 集成时取消注释
+            <dependency>
+                <groupId>org.gitlab4j</groupId>
+                <artifactId>gitlab4j-api</artifactId>
+                <version>${gitlab4j.version}</version>
+            </dependency>
+            -->
+
+            <!-- ========== Lark SDK (飞书) ========== -->
+            <!--
+            TODO：Lark SDK 仓库 409，暂注释。飞书 API 改用 RestTemplate 直接调用
+            <dependency>
+                <groupId>com.larksuite.oapi</groupId>
+                <artifactId>oapi-sdk</artifactId>
+                <version>${lark-sdk.version}</version>
+            </dependency>
+            -->
+
+            <!-- ========== Spring AI ========== -->
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-openai-spring-boot-starter</artifactId>
+                <version>${spring-ai.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!-- ============================================================
+         仓库配置：显式指定 Maven Central，避免走缓存的阿里云镜像
+         VPN 海外环境不走 aliyun，直接连 Maven Central
+         ============================================================ -->
+    <repositories>
+        <repository>
+            <id>maven-central</id>
+            <name>Maven Central</name>
+            <url>https://repo.maven.apache.org/maven2</url>
+            <releases><enabled>true</enabled></releases>
+            <snapshots><enabled>false</enabled></snapshots>
+        </repository>
+    </repositories>
+    <pluginRepositories>
+        <pluginRepository>
+            <id>maven-central-plugins</id>
+            <name>Maven Central Plugins</name>
+            <url>https://repo.maven.apache.org/maven2</url>
+            <releases><enabled>true</enabled></releases>
+            <snapshots><enabled>false</enabled></snapshots>
+        </pluginRepository>
+    </pluginRepositories>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <source>${java.version}</source>
+                        <target>${java.version}</target>
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>${lombok.version}</version>
+                            </path>
+                            <path>
+                                <groupId>org.mapstruct</groupId>
+                                <artifactId>mapstruct-processor</artifactId>
+                                <version>${mapstruct.version}</version>
+                            </path>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok-mapstruct-binding</artifactId>
+                                <version>0.2.0</version>
+                            </path>
+                        </annotationProcessorPaths>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <configuration>
+                        <excludes>
+                            <exclude>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                            </exclude>
+                        </excludes>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>

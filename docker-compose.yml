@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # ========== MySQL 5.7 ==========
+  mysql:
+    image: mysql:5.7
+    container_name: feishu-bot-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: 123 #mysql密码
+      MYSQL_DATABASE: feishu_bot
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
+      TZ: Asia/Shanghai
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+
+  # ========== Redis 7 ==========
+  redis:
+    image: redis:7-alpine
+    container_name: feishu-bot-redis
+    restart: unless-stopped
+    command: redis-server
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  # ========== RabbitMQ 3.13（带管理面板） ==========
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: feishu-bot-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: itheima  #【填你的RabbitMQ用户名】
+      RABBITMQ_DEFAULT_PASS: itheima #【填你的RabbitMQ密码】
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # 管理面板 http://localhost:15672
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+volumes:
+  mysql-data:
+  redis-data:
+  rabbitmq-data:

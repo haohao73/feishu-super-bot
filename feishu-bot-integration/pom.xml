@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.bluemountain</groupId>
+        <artifactId>feishu-bot</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>feishu-bot-integration</artifactId>
+    <name>feishu-bot-integration</name>
+    <description>外部集成模块：飞书 SDK、Git、JIRA、Jenkins、监控等第三方平台对接</description>
+
+    <dependencies>
+        <!-- 公共 + 基础设施 -->
+        <dependency>
+            <groupId>com.bluemountain</groupId>
+            <artifactId>feishu-bot-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.bluemountain</groupId>
+            <artifactId>feishu-bot-infrastructure</artifactId>
+        </dependency>
+
+        <!-- 飞书 SDK（暂注释，改用 RestTemplate 直接调飞书 API） -->
+        <!--
+        <dependency>
+            <groupId>com.larksuite.oapi</groupId>
+            <artifactId>oapi-sdk</artifactId>
+        </dependency>
+        -->
+
+        <!-- JGit Git 操作 -->
+        <dependency>
+            <groupId>org.eclipse.jgit</groupId>
+            <artifactId>org.eclipse.jgit</artifactId>
+        </dependency>
+
+        <!-- GitLab API（GitLab4J 6.0.0-rc5 未发布到 Maven Central，暂注释） -->
+        <!--
+        <dependency>
+            <groupId>org.gitlab4j</groupId>
+            <artifactId>gitlab4j-api</artifactId>
+        </dependency>
+        -->
+
+        <!-- Spring AI 大模型调用 -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-openai-spring-boot-starter</artifactId>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+</project>
