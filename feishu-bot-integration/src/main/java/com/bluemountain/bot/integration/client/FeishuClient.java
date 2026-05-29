@@ -5,6 +5,7 @@ import cn.hutool.json.JSONUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -38,7 +39,10 @@ public class FeishuClient {
     private static final String APPROVAL_LIST_URL = FEISHU_HOST + "/open-apis/approval/v4/instances";
 
     public FeishuClient() {
-        this.restTemplate = new RestTemplate();
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5000);
+        factory.setReadTimeout(15000);
+        this.restTemplate = new RestTemplate(factory);
         this.restTemplate.getMessageConverters()
                 .add(0, new org.springframework.http.converter.StringHttpMessageConverter(
                         java.nio.charset.StandardCharsets.UTF_8));
@@ -143,6 +147,7 @@ public class FeishuClient {
                 Map<String, Object> data = (Map<String, Object>) resp.get("data");
                 String chatId = (String) data.get("chat_id");
                 log.info("群聊创建成功 | name={} chatId={}", name, chatId);
+                //返回创建的群聊的id
                 return chatId;
             } else {
                 log.error("群聊创建失败 | 响应={}", resp);
@@ -153,6 +158,12 @@ public class FeishuClient {
             return null;
         }
     }
+
+    /**
+     * 拿token,构造请求头和请求体,发送请求,解析并返回创建的群聊
+     * @param chatId
+     * @param openId
+     */
 
     // ==================== 添加成员到群聊 ====================
 
@@ -177,7 +188,10 @@ public class FeishuClient {
             log.error("成员添加异常", e);
         }
     }
-
+/**
+ *
+ * 依旧拼请求头请求体,发送请求解析数据并返回
+ */
     // ==================== 创建日历事件 ====================
 
     /**

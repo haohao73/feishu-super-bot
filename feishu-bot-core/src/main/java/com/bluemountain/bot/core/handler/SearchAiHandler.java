@@ -43,6 +43,7 @@ public class SearchAiHandler implements CommandPlugin {
         }
 
         // ① 智能拆词搜索：把长句子拆成多个关键词，逐个 LIKE 匹配
+        //通过智能检索用户的问题,得到了相关的文档
         List<BotKnowledgeDoc> docs = docMapper.smartSearch(question.trim());
         if (docs.isEmpty()) {
             return "知识库中暂无与「" + question + "」相关的文档，无法回答。";
@@ -69,6 +70,7 @@ public class SearchAiHandler implements CommandPlugin {
         String userMessage = docContext + "\n【用户问题】\n" + question;
 
         // ⑤ 调 AI
+        //发送提示词和文档内容+用户问题
         String answer = aiClient.chat(systemPrompt, userMessage);
         if (answer == null) {
             return "AI 服务暂时不可用，请稍后重试";

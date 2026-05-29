@@ -66,3 +66,4 @@ public class ReviewHandler implements CommandPlugin {
         return review.trim();
     }
 }
+//提示词给出角色设定,降低温度系数阻止ai的随意发挥

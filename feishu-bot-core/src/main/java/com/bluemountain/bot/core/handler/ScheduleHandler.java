@@ -14,7 +14,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Map;
 
 @Slf4j
 @Component
@@ -48,17 +47,7 @@ public class ScheduleHandler implements CommandPlugin {
 
     @Override
     public String execute(CommandContext ctx) {
-        // 上下文延续模式：优先从结构化参数取 time 和 title
-        Map<String, String> cArgs = ctx.getContextArgs();
-        String args;
-
-        if (cArgs != null && cArgs.containsKey("time") && cArgs.containsKey("title")) {
-            // 拼接回去给 TimeParser 解析："明天下午3点 讨论会议项目方案"
-            args = cArgs.get("time") + " " + cArgs.get("title");
-        } else {
-            // 斜杠指令模式
-            args = ctx.getArgs();
-        }
+        String args = ctx.getArgs();
 
         if (args == null || args.isBlank()) {
             return "请输入日程信息\n用法：\n`/schedule 明天 15:00 项目评审`";
@@ -72,7 +61,7 @@ public class ScheduleHandler implements CommandPlugin {
                     + "或：`/schedule 2026-05-20 15:00 项目评审`";
         }
 
-        // ② 写入 MySQL
+        // 首先存入数据库,保存数据,哪怕没有申请到飞书日历但是记录还在
         BotSchedule schedule = new BotSchedule();
         schedule.setUserId(ctx.getUserId());
         schedule.setTitle(result.title);
@@ -85,7 +74,15 @@ public class ScheduleHandler implements CommandPlugin {
         String timeStr = result.time.format(DateTimeFormatter.ofPattern("yyyy年MM月dd日 HH:mm"));
         StringBuilder reply = new StringBuilder();
         reply.append("**日程已创建** ✅\n\n时间：").append(timeStr).append("\n内容：").append(result.title);
-
+/**
+ *
+ * 二次授权: tenant_token = 公司工牌，换 user_token 时用
+ *   user_token = 钥匙，表示用户本人同意
+ *   bot_user_token 表 存入表中
+ *
+ *表中有用户授权的token,才表示用户亲自同意了,否则就是未授权或者过期了,需要重新授权,返回链接
+ *
+ */
         // ③ 检查是否授权了日历
         BotUserToken token = tokenMapper.selectById(ctx.getUserId());
         if (token != null) {
@@ -99,7 +96,9 @@ public class ScheduleHandler implements CommandPlugin {
                 // token 过期或无效 → 重新发授权链接
                 reply.append("\n\n⚠ [重新授权日历同步](").append(buildAuthUrl(ctx.getUserId())).append(")");
             }
-        } else {
+        }
+        //表示表中没有token,用户之前从未授权,是第一次使用
+        else {
             reply.append("\n\n⚠ [点击授权日历同步](").append(buildAuthUrl(ctx.getUserId())).append(")");
         }
 

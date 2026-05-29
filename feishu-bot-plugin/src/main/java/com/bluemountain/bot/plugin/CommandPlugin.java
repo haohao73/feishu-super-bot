@@ -5,6 +5,10 @@ import com.bluemountain.bot.common.dto.CommandContext;
 /**
  * 指令插件接口：所有指令（/weather、/schedule 等）实现此接口
  */
+
+/**
+ * 对扩展开放,对修改关闭,core写实现层依赖plugin
+ */
 public interface CommandPlugin {
 
     /** 指令名，不含斜杠。如 "weather" */

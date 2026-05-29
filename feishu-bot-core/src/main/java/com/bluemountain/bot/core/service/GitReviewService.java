@@ -73,14 +73,14 @@ public class GitReviewService {
         JSONObject repo = root.getJSONObject("repository");
         String repoPath = repo != null ? repo.getStr("path") : "";
         String repoName = repo != null ? repo.getStr("name") : "";
-
+//可能commit了三次push了一次
         List<Map<String, Object>> commits =
                 (List<Map<String, Object>>) root.get("commits");
         if (commits == null || commits.isEmpty()) return;
 
         log.info("收到 Gitee Push | repo={} commits={}", repoName, commits.size());
 
-        // 获取实际代码 diff
+        // 获取实际代码 diff,不能是第一次push
         String diff = null;
         if (repoPath != null && !repoPath.isBlank()
                 && before != null && !"0000000000000000000000000000000000000000".equals(before)) {

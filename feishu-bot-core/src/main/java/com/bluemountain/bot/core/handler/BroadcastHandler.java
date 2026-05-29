@@ -20,6 +20,9 @@ import java.util.List;
 
 @Slf4j
 @Component
+/**
+ * 只有管理员或者超级管理员才可以操作
+ */
 @RequireRole("ADMIN")
 public class BroadcastHandler implements CommandPlugin {
 
@@ -60,9 +63,13 @@ public class BroadcastHandler implements CommandPlugin {
         String cleanArgs = args.startsWith("|") ? args.substring(1).trim() : args;
         List<String> targetIds;
         String title, content;
+        /**
+         * 切割了hhhhhh
+         */
         String[] parts = cleanArgs.split("\\s*\\|\\s*");
 
         if (parts.length == 2) {
+           // /broadcast |标题|内容
             // 没指定群ID → 默认发当前群
             targetIds = List.of(ctx.getChatId());
             title = parts[0].trim();
@@ -83,6 +90,7 @@ public class BroadcastHandler implements CommandPlugin {
                 return "目标群未找到，请确认群名正确\n"
                      + "群名需要先在群里发一条消息让机器人采集";
             }
+            //得到所有群的id
             targetIds = unresolved;
             title = parts[1].trim();
             content = parts[2].trim();
@@ -111,12 +119,13 @@ public class BroadcastHandler implements CommandPlugin {
 
         log.info("广播开始 | senderId={} title={} targets={}", senderId, title, targetIds.size());
 
-        // ===== ④ 逐群发送 =====
+        // ④ 逐群发送
         int success = 0, fail = 0;
         String formattedMsg = String.format("**【%s】**\n\n%s", title, content);
 
         for (String chatId : targetIds) {
             try {
+                //根据群名拿到chatId之后
                 feishuClient.sendTextMessage(chatId.trim(), formattedMsg);
                 success++;
             } catch (Exception e) {
@@ -125,7 +134,7 @@ public class BroadcastHandler implements CommandPlugin {
             }
         }
 
-        // ===== ⑤ 更新广播记录 =====
+        //  更新广播记录
         broadcast.setSuccessCount(success);
         broadcast.setFailCount(fail);
         broadcast.setStatus(fail == 0 ? 3 : 4); // 3=已完成 4=部分失败
@@ -134,7 +143,7 @@ public class BroadcastHandler implements CommandPlugin {
 
         log.info("广播完成 | broadcastId={} success={} fail={}", broadcast.getId(), success, fail);
 
-        // ===== ⑥ 回复管理员 =====
+        //  回复管理员
         return String.format(
             "📢 **消息广播完成**\n\n标题：%s\n目标：%d 个群\n成功：%d / 失败：%d",
             title, targetIds.size(), success, fail

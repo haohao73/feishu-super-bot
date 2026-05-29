@@ -15,11 +15,7 @@ import org.springframework.stereotype.Component;
 /**
  * 权限校验切面 — 在 CommandPlugin.execute() 执行前拦截校验
  *
- * 流程：
- * 1. 从方法参数里拿 CommandContext → userId
- * 2. 读 Handler 类上的 @RequireRole 注解
- * 3. 没有注解 → 直接放行
- * 4. 有注解 → 查 bot_user 表 + bot_user_role 表 → 有角色放行，没角色拒绝
+ 拦截所有实现了 CommandPlugin 接口的类的 execute 方法，
  */
 @Slf4j
 @Aspect
@@ -40,6 +36,9 @@ public class RoleCheckAspect {
         String userId = null;
         String command = null;
         for (Object arg : joinPoint.getArgs()) {
+            /**
+             * 被拦截方法的所有参数,其实就CommandContext一个
+             */
             if (arg instanceof CommandContext ctx) {
                 userId = ctx.getUserId();
                 command = ctx.getCommand();
@@ -65,6 +64,7 @@ public class RoleCheckAspect {
         log.info("权限检查 | cmd={} userId={} needRole={}", command, userId, requiredRole);
 
         // == 第3步：查用户 ==
+        //需要权限访问的指令条件下
         BotUser user = userMapper.selectByOpenId(userId);
         if (user == null) {
             log.warn("权限拒绝：用户未注册 | openId={}", userId);

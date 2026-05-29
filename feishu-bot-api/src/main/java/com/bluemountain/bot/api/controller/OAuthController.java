@@ -28,6 +28,13 @@ public class OAuthController {
     /**
      * 飞书授权回调
      * GET /oauth/callback?code=xxx&state=ou_xxx
+     *  ① 用户发 /schedule → 机器人发现没 token → 回复一个飞书链接
+     *   ② 用户点链接 → 飞书页面问"同意吗？" → 用户点同意
+     *   ③ 飞书浏览器跳转 → GET http://feishubot.nat300.top/oauth/callback?code=xxx&state=ou_xxx
+     *   ④ OAuthController 收到 code → 你这段代码开始执行
+     *
+     *   code 是一个一次性授权码（几分钟后过期），它不是最终的钥匙，而是换钥匙的凭证。类比：你去酒店前台出示身份证，前台给你一
+     *   张小票。小票不是房卡，但你可以用小票去换房卡。
      */
     @GetMapping("/callback")
     public String callback(@RequestParam("code") String code,
@@ -35,10 +42,11 @@ public class OAuthController {
         log.info("OAuth 回调 | code={} openId={}", code, openId);
 
         try {
-            // 先拿 tenant_access_token
+            // 先拿 tenant_access_token apply_id + apply_key去拿
             String tenantToken = feishuClient.getTenantToken();
 
             // 用 code + tenant_token 换 user_access_token
+            //用户点击授权,就会返回code
             Map<String, String> body = Map.of(
                     "grant_type", "authorization_code",
                     "code", code
@@ -55,6 +63,7 @@ public class OAuthController {
                     request, Map.class);
 
             // token 在 data 里面：{code:0, data:{access_token:..., refresh_token:...}}
+            //注意飞书返回的结构
             @SuppressWarnings("unchecked")
             Map<String, Object> data = (Map<String, Object>) resp.get("data");
             if (resp == null || data == null || data.get("access_token") == null) {

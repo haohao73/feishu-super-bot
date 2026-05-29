@@ -4,6 +4,7 @@ import cn.hutool.json.JSONUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -30,7 +31,10 @@ public class AiClient {
     private final RestTemplate restTemplate;
 
     public AiClient() {
-        this.restTemplate = new RestTemplate();
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5000);
+        factory.setReadTimeout(60000);
+        this.restTemplate = new RestTemplate(factory);
         this.restTemplate.getMessageConverters()
                 .add(0, new org.springframework.http.converter.StringHttpMessageConverter(StandardCharsets.UTF_8));
     }
@@ -50,18 +54,23 @@ public class AiClient {
         }
 
         try {
+            /**
+             * 设定 ai的角色,用户 的具体问题(包含查询到的文档内容和用户 的问题)
+             */
             Map<String, Object> body = Map.of(
                     "model", model,
                     "messages", List.of(
                             Map.of("role", "system", "content", systemPrompt),
                             Map.of("role", "user", "content", userMessage)
                     ),
+                    //温度系数比较低,回答的比较保守
                     "temperature", 0.3,
+                    //最长1024个token
                     "max_tokens", 1024
             );
 
             HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
+             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.setBearerAuth(apiKey.trim());
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
 
@@ -69,7 +78,7 @@ public class AiClient {
 
             String url = baseUrl + "/v1/chat/completions";
             String json = restTemplate.postForObject(url, request, String.class);
-
+            //依旧拼接请求头请求体发送请求
             Map<String, Object> resp = JSONUtil.parseObj(json);
             List<Map<String, Object>> choices = (List<Map<String, Object>>) resp.get("choices");
             if (choices == null || choices.isEmpty()) {
@@ -80,6 +89,7 @@ public class AiClient {
             Map<String, Object> msg = (Map<String, Object>) choices.get(0).get("message");
             String content = (String) msg.get("content");
             log.info("AI 回复 | 长度={}", content != null ? content.length() : 0);
+            //返回ai的回复
             return content;
 
         } catch (Exception e) {

@@ -83,7 +83,7 @@ public class ApprovalReminderService {
                 return;
             }
 
-            // 新审批单 → 只记录待审批的
+            // 不是待审批的直接跳过
             if (!"PENDING".equals(status)) return;
 
             // 取审批人 open_id
@@ -159,7 +159,7 @@ public class ApprovalReminderService {
                 r.getCreateTime() != null
                         ? r.getCreateTime().toString().replace("T", " ") : "-",
                 r.getRemindCount() + 1);
-
+//调用飞书发送给审批人
         feishuClient.sendTextToUser(approver.getFeishuOpenId(), msg);
 
         r.setRemindCount(r.getRemindCount() + 1);

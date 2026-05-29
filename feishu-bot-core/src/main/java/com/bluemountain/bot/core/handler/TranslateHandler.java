@@ -76,4 +76,10 @@ public class TranslateHandler implements CommandPlugin {
         return String.format("**翻译**\n\n原文：%s\n译文：%s\n方向：→ %s",
                 sourceText, result, TranslateClient.toDisplayName(targetLang));
     }
+    /**
+     *
+     * 仍然是解析参数,发送请求,返回数据给上层
+     * 这里解析参数比较智能,如果是中文就翻译成英文,只要不是中文的文本都翻译成中文
+     * 用户输入空白或者不支持的语言都提醒
+     */
 }

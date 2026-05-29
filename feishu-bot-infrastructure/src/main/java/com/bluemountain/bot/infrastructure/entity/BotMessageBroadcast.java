@@ -31,7 +31,7 @@ public class BotMessageBroadcast {
 
     /** 1=待发送 2=发送中 3=已完成 4=部分失败 */
     private Integer status;
-
+    /**成功数量和失败数量*/
     private Integer successCount;
     private Integer failCount;
     private LocalDateTime createTime;

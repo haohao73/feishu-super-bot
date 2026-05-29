@@ -4,18 +4,21 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.bluemountain.bot.integration.dto.WeatherResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
 
 /**
- * Open-Meteo 天气客户端 — 免费、无需注册、无需 API Key
+ * Open-Meteo 天气客户端 — 免费、无需注册、无需 API Key,和风天气调试出错了换个简单点的
  */
 @Slf4j
 @Component
 public class WeatherClient {
-
+    /**
+     * 就是 Java 的 HTTP 客户端，用来发 HTTP 请求的。
+     */
     private final RestTemplate restTemplate;
 
     /** 城市 → 经纬度 */
@@ -56,7 +59,13 @@ public class WeatherClient {
     );
 
     public WeatherClient() {
-        this.restTemplate = new RestTemplate();
+        //创建http连接工厂
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        //5秒内连不上就放弃
+        factory.setConnectTimeout(5000);
+        //10秒后没返回数据也放弃
+        factory.setReadTimeout(10000);
+        this.restTemplate = new RestTemplate(factory);
     }
 
     public WeatherResponse getNow(String cityName) {
@@ -73,6 +82,22 @@ public class WeatherClient {
         log.info("查询天气 | 城市={} URL={}", cityName, url);
 
         try {
+            /**|
+             *
+             * // 第1行：发 HTTP GET 请求，返回 JSON 字符串
+             *   String json = restTemplate.getForObject(java.net.URI.create(url), String.class);
+             *   //           ↑ 这一行向 Open-Meteo 服务器发了 GET 请求，拿到原始 JSON 文本
+             *   // json = "{\"current\":{\"temperature_2m\":25.3,\"weather_code\":0,...}}"
+             *
+             *   // 第2行：把 JSON 字符串解析成对象，才能操作它
+             *   JSONObject root = JSONUtil.parseObj(json);
+             *   // root = {current: {...}}  ← 现在可以 root.getStr("xxx") 了
+             *
+             *   // 第3行：从整个 JSON 里取出 "current" 这个嵌套部分
+             *   JSONObject current = root.getJSONObject("current");
+             *   // current = {temperature_2m: 25.3, weather_code: 0, ...}
+             *
+             */
             String json = restTemplate.getForObject(java.net.URI.create(url), String.class);
             JSONObject root = JSONUtil.parseObj(json);
             JSONObject current = root.getJSONObject("current");
@@ -82,6 +107,7 @@ public class WeatherClient {
             resp.setUpdateTime(current.getStr("time"));
 
             WeatherResponse.Now now = new WeatherResponse.Now();
+            //从json对象中按key去字符串
             now.setTemp(current.getStr("temperature_2m"));
             now.setFeelsLike(current.getStr("temperature_2m")); // Open-Meteo 无体感温度
             now.setHumidity(current.getStr("relative_humidity_2m"));
@@ -92,10 +118,15 @@ public class WeatherClient {
 
             resp.setNow(now);
             return resp;
+            //返回给上面的handle
 
         } catch (Exception e) {
             log.error("天气 API 调用失败 | 城市={}", cityName, e);
             return null;
         }
     }
+    /**
+     *
+     * 核心就是拼url参数,发请求,json解析,字段提取,封装dto并返回
+     */
 }

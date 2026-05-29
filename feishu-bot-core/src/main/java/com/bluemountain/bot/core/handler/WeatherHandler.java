@@ -30,13 +30,10 @@ public class WeatherHandler implements CommandPlugin {
 
     @Override
     public String execute(CommandContext ctx) {
-        // 1. 获取城市名
-        // 上下文延续模式优先从结构化参数取，斜杠指令从 getArgs() 取
-        String cityName;
-        if (ctx.getContextArgs() != null && ctx.getContextArgs().containsKey("city")) {
-            cityName = ctx.getContextArgs().get("city");
-        } else {
-            cityName = ctx.getArgs();
+        // 只取第一个词作为城市名（AI 可能返回 "重庆 明天"）
+        String cityName = ctx.getArgs();
+        if (cityName != null && cityName.contains(" ")) {
+            cityName = cityName.split("\\s+")[0];
         }
 
         if (cityName == null || cityName.isBlank()) {
@@ -66,4 +63,24 @@ public class WeatherHandler implements CommandPlugin {
                 weather.getUpdateTime()
         );
     }
+    /**
+
+     *   WeatherClient.getNow("北京")
+     *     → return resp;      ← 返回到 WeatherHandler.execute()
+     *
+     *   WeatherHandler.execute()
+     *     → return "**北京 实时天气**\n☁ 晴...";   ← 返回到 CommandRouter.route()
+     *
+     *   CommandRouter.route()
+     *     → return plugin.execute(ctx);   ← 返回到 WebhookController.processCommand()
+     *
+     *   processCommand()
+     *     → String reply = commandRouter.route(ctx);
+     *     → feishuClient.sendTextMessage(chatId, reply);  ← 调飞书 API 发到群里
+     *
+     *   getNow() 返回 WeatherResponse 对象给 Handler → Handler 把它拼成 Markdown 字符串返回给 Router → Router 返回给
+     *   Controller → Controller 调飞书 API 发给用户。每一层只和相邻层交互，上下层各司其职。
+     *
+     *   就是调用api返回封装对象之后,将excute得到的结果接着向上层返回,调用飞书的api将这些结果发送给用户飞书群里
+     */
 }

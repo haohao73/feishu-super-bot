@@ -6,10 +6,13 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Random;
@@ -48,8 +51,15 @@ public class TranslateClient {
     private static final String API_URL = "https://fanyi-api.baidu.com/api/trans/vip/translate";
 
     public TranslateClient() {
-        this.restTemplate = new RestTemplate();
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5000);
+        factory.setReadTimeout(10000);
+        this.restTemplate = new RestTemplate(factory);
         this.restTemplate.getMessageConverters()
+                //调试了很多遍,强制指定编码格式防止乱码
+                //  // 位置 0 = 最高优先级，盖掉默认的编码
+                //  this.restTemplate.getMessageConverters()
+                //          .add(0, new StringHttpMessageConverter(StandardCharsets.UTF_8));
                 .add(0, new org.springframework.http.converter.StringHttpMessageConverter(StandardCharsets.UTF_8));
     }
 
@@ -72,28 +82,36 @@ public class TranslateClient {
                 targetLang = "zh".equals(sourceLang) ? "en" : "zh";
             }
 
-            // 百度签名：MD5(appid + encoded_q + salt + key)
+            // 签名：MD5(appid + q + salt + key)，q 用原始文本
             String appIdTrim = appId.trim();
             String keyTrim = secretKey.trim();
             String salt = String.valueOf(new Random().nextInt(100000));
-            String encodedText = URLEncoder.encode(text, StandardCharsets.UTF_8);
-            String signRaw = appIdTrim + encodedText + salt + keyTrim;
+            String signRaw = appIdTrim + text + salt + keyTrim;
             String sign = DigestUtil.md5Hex(signRaw);
-            log.info("签名原文 | {}", signRaw);
-
-            // 拼接 URL（百度 API 只支持 GET）
-            String url = API_URL
-                    + "?q=" + URLEncoder.encode(text, StandardCharsets.UTF_8)
-                    + "&from=" + sourceLang
-                    + "&to=" + targetLang
-                    + "&appid=" + appIdTrim
-                    + "&salt=" + salt
-                    + "&sign=" + sign;
 
             log.info("翻译请求 | text={} {}→{}", text, sourceLang, targetLang);
 
-            String json = restTemplate.getForObject(url, String.class);
-
+            // 用 POST + x-www-form-urlencoded，避免 GET URL 编码问题
+            //设置请求头,想要表单格式的数据
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            //构造表单参数
+            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+            body.add("q", text);
+            body.add("from", sourceLang);
+            body.add("to", targetLang);
+            body.add("appid", appIdTrim);
+            body.add("salt", salt);
+            body.add("sign", sign);
+            //把参数和请求头都打包成一个请求对象
+            HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
+            //url,请求对象 ,返回的数据格式
+            String json = restTemplate.postForObject(API_URL, request, String.class);
+            log.info("翻译API原始返回 | {}", json);
+            /**
+             *
+             *       解析数据并返回
+             */
             // 百度返回格式：{"from":"en","to":"zh","trans_result":[{"src":"Hello","dst":"你好"}]}
             JSONObject root = JSONUtil.parseObj(json);
 

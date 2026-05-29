@@ -1,7 +1,6 @@
 package com.bluemountain.bot.common.dto;
 
 import lombok.Data;
-import java.util.Map;
 
 /**
  * 指令上下文：解析后传递给 Handler 的数据载体
@@ -31,13 +30,6 @@ public class CommandContext {
     private String messageId;
 
     /**
-     * 上下文延续模式下，AI 解析出的完整结构化参数
-     * 如 {"city":"北京","time":"明天"}
-     * 斜杠指令模式下为 null
-     */
-    private Map<String, String> contextArgs;
-
-    /**
      * 从原始消息解析出指令上下文
      */
     public static CommandContext parse(String chatId, String userId, String messageId, String messageText) {
@@ -47,7 +39,7 @@ public class CommandContext {
         ctx.setMessageId(messageId);
         ctx.setRawMessage(messageText);
 
-        String text = messageText.trim();
+        String text = messageText.trim(); //去掉首尾的空格和换行符
 
         // 去掉 @机器人 前缀（群聊里 @ 机器人后消息格式是 "@_user_1 /weather 北京"）
         if (text.contains("@")) {
@@ -57,7 +49,7 @@ public class CommandContext {
         }
 
         if (!text.startsWith("/")) {
-            return null; // 不是指令，不处理
+            return null; // 不是指令，不处理,但是要考虑上下文延续的问题
         }
 
         text = text.substring(1); // 去掉开头的 /
@@ -65,7 +57,7 @@ public class CommandContext {
         if (spaceIdx > 0) {
             ctx.setCommand(text.substring(0, spaceIdx));
             ctx.setArgs(text.substring(spaceIdx + 1).trim());
-            ctx.setArgArray(ctx.getArgs().split("\\s+"));
+            ctx.setArgArray(ctx.getArgs().split("\\s+"));//数组
         } else {
             ctx.setCommand(text);
             ctx.setArgs("");

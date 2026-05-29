@@ -9,13 +9,13 @@ spring:
   # 导入本地密钥文件（不上传 Git），文件不存在也不会报错
   config:
     import: optional:classpath:application-local.yml
-  # 暂时禁用 RabbitMQ，当前同步指令不需要（后续 /deploy 等异步指令再开启）
+  # 本项目没有实现/deploy指定,所以没有用到mq
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
 
   # ============================================
-  # 数据库 — MySQL（【待填】请替换为你的实际信息）
+  # 数据库 — MySQL
   # ============================================
   datasource:
     url: jdbc:mysql://127.0.0.1:3307/feishu_bot?useSSL=false&allowPublicKeyRetrieval=true
@@ -29,7 +29,7 @@ spring:
       max-lifetime: 1200000
 
   # ============================================
-  # Redis（【待填】请替换为你的实际信息）
+  # Redis
   # ============================================
   data:
     redis:
@@ -43,64 +43,49 @@ spring:
           max-idle: 8
           min-idle: 4
 
-  # ============================================
-  # RabbitMQ（【待填】请替换为你的实际信息）
-  # ============================================
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username:  itheima #【填你的RabbitMQ用户名】
-    password: itheima #【填你的RabbitMQ密码】
-    virtual-host: /
-    listener:
-      simple:
-        acknowledge-mode: manual
-        retry:
-          enabled: true
-          max-attempts: 3
-          initial-interval: 1000ms
+
 
   # ============================================
-  # Spring AI（【待填】请替换为你的实际信息）
+  # Spring AI
   # ============================================
   ai:
     openai:
-      api-key:   ${DEEP_SEEK_API} #【填你的大模型 API Key】
-      base-url:  https://api.deepseek.com # 【填你的大模型 Base URL，如 https://api.deepseek.com】
+      api-key:   ${DEEP_SEEK_API} #本地环境变量加载
+      base-url:  https://api.deepseek.com
       chat:
-        model: deepseek-chat #【填模型名，如 deepseek-chat】
+        model: deepseek-chat
 
 # ============================================
 # MyBatis-Plus
 # ============================================
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
-  type-aliases-package: com.bluemountain.bot
+  type-aliases-package: com.bluemountain.bot #xml文件,但其实整个项目没有用到xml文件
   configuration:
-    map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true #驼峰映射
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl #控制台打印sql日志
   global-config:
     db-config:
-      id-type: auto
-      logic-delete-field: deleted
+      id-type: auto #主键策略:自增
+      logic-delete-field: deleted #逻辑删除
       logic-delete-value: 1
       logic-not-delete-value: 0
 
 # ============================================
-# 飞书应用配置（【待填】请替换为飞书开放平台的实际值）
+# 飞书应用配置
 # ============================================
 feishu:
-  app-id: cli_aa8c065435f9dbde #【填飞书应用的 App ID】
-  app-secret: ${FEISHU_APP_SECRET} #【填飞书应用的 App Secret】
-  encrypt-key: 【填飞书事件订阅的 Encrypt Key，未开启加密则留空】
-  verification-token: 【填飞书事件订阅的 Verification Token】
+  app-id: cli_aa8c065435f9dbde
+  app-secret: ${FEISHU_APP_SECRET} #写到本地环境变量去了
+  encrypt-key: 
+  verification-token:
   signature-verification-enabled: false # 未配置 encrypt_key 时保持 false，上线后改为 true
   approval-code: "7641525625807506610" # 请假审批定义 code
   review-chat-id: "oc_f751bd04fdf2ac64846673a7288c6721" # 代码审查结果发到哪个群
 
-# Gitee（【可选】填你的 Gitee 私人令牌，不填则 diff 内容可能为空）
+# Gitee
 gitee:
-  token: 【填你的 Gitee 私人令牌，用于获取代码 diff】
+  token: #本项目没有用到
 
 # ============================================
 # AI 大模型（【待填】DeepSeek 等 OpenAI 兼容 API）
@@ -114,12 +99,10 @@ ai:
 # 第三方 API Key（【待填】按需填写）
 # ============================================
 integration:
-  weather:
-    api-key: ${QWEATHER_API_KEY:} # 密钥放在 application-local.yml，不上传 Git
-    base-url: https://devapi.qweather.com/v7 # 免费版用 devapi，付费版改 api
   translate:
-    api-key: 【填翻译 API Key】
-    base-url: 【填翻译 API 地址】
+    baidu:
+      app-id: ${BAIDU_APP_ID:}
+      secret-key: ${BAIDU_SECRET_KEY:}
 
 # ============================================
 # 机器人行为配置

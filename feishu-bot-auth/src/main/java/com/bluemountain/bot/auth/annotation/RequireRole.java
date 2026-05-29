@@ -13,6 +13,13 @@ import java.lang.annotation.*;
  *
  * AOP 切面 RoleCheckAspect 会在 execute() 执行前自动校验。
  */
+
+/**
+
+ *定义注解里唯一的一个属性，类型是 String。使用时：
+ *
+ *   @RequireRole("ADMIN")        // 等价于 @RequireRole(value = "ADMIN")
+ */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented

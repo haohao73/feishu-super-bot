@@ -57,4 +57,7 @@ public class SearchHandler implements CommandPlugin {
 
         return sb.toString();
     }
+    /**
+     * 没什么好说的,拼接所有符合条件的返回给上层就行
+     */
 }

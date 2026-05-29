@@ -20,7 +20,7 @@
         <module>feishu-bot-core</module>
         <module>feishu-bot-api</module>
     </modules>
-
+<!-- 统一springboot的版本-->
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
@@ -29,6 +29,7 @@
     </parent>
 
     <properties>
+        <!--java17-->
         <java.version>17</java.version>
         <mybatis-plus.version>3.5.9</mybatis-plus.version>
         <hutool.version>5.8.34</hutool.version>

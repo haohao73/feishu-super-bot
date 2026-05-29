@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 
-/**
+/**redis
  * 群名注册中心 —— 自动维护「群名 ↔ chat_id」映射
  *
  * 每次收到消息时静默采集群名存 Redis，

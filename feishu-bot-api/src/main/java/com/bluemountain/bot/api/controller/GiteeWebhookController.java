@@ -30,12 +30,12 @@ public class GiteeWebhookController {
         String body = readBody(request);
         log.info("Gitee Webhook 收到推送 | bodyLen={}", body.length());
 
-        // 异步处理，快速返回 200
+        // 异步处理，快速返回 200扔进线程池
         executor.submit(() -> gitReviewService.handlePushEvent(body));
 
         return Map.of("ok", true);
     }
-
+//读取gitee返回的事件体,就是新推送的代码
     private String readBody(HttpServletRequest request) {
         try {
             StringBuilder sb = new StringBuilder();

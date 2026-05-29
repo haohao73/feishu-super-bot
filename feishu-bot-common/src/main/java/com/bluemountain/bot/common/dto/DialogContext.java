@@ -1,5 +1,6 @@
 package com.bluemountain.bot.common.dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +49,7 @@ public class DialogContext {
 
     /** 一轮对话 */
     @Data
+    @AllArgsConstructor
     public static class Turn {
         private String role;   // "user" / "assistant"
         private String text;   // 消息内容

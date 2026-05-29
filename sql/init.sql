@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS bot_user_role (
 -- ============================================================
 CREATE TABLE IF NOT EXISTS bot_command_log (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT DEFAULT NULL COMMENT '执行者ID',
+    user_id VARCHAR(64) DEFAULT '' COMMENT '执行者open_id',
     command VARCHAR(64) NOT NULL COMMENT '指令名',
     raw_message TEXT COMMENT '原始消息全文',
     params JSON COMMENT '解析后的参数',

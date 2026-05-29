@@ -49,4 +49,7 @@ public class GroupHandler implements CommandPlugin {
                 groupName.trim()
         );
     }
+    /**
+     * 依旧解析参数,调用api,拿到结果返回给上层
+     */
 }

@@ -68,4 +68,8 @@ public interface BotKnowledgeDocMapper extends com.baomidou.mybatisplus.core.map
                .last("LIMIT 3");
         return selectList(wrapper);
     }
+    /**
+     *
+     * 智能拆词之后进行模糊查询,返回查询到的文档(3篇)
+     */
 }
