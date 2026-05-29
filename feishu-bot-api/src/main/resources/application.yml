@@ -85,7 +85,7 @@ feishu:
 
 # Gitee
 gitee:
-  token: #本项目没有用到
+  token: ${GITEE_TOKEN}
 
 # ============================================
 # AI 大模型（【待填】DeepSeek 等 OpenAI 兼容 API）
