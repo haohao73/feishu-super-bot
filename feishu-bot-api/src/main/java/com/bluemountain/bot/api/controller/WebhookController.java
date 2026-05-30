@@ -102,12 +102,25 @@ public class WebhookController {
         }
 
         // ---- 第3步：判断事件类型 ----
-        String eventType = bodyJson.getJSONObject("header")
-                .getStr("event_type", "");
+        String rootType = bodyJson.getStr("type", "");
+        String eventType = "";
 
-        // 审批事件 → 写表后返回
-        if (eventType.contains("approval_instance")) {
-            log.info("收到审批事件 | type={}", eventType);
+        if ("event_callback".equals(rootType) && bodyJson.getJSONObject("event") != null) {
+            eventType = bodyJson.getJSONObject("event").getStr("type", "");
+        }
+
+        // V1.0 事件（如 approval_instance）格式：header.event_type
+        String headerEventType = "";
+        JSONObject header = bodyJson.getJSONObject("header");
+        if (header != null) {
+            headerEventType = header.getStr("event_type", "");
+        }
+
+        // 审批事件（V1.0 + V2.0）→ 写表后返回
+        if (eventType.contains("approval") || rootType.contains("approval")
+                || headerEventType.contains("approval")) {
+            log.info("收到审批事件 | rootType={} eventType={} headerEventType={}",
+                    rootType, eventType, headerEventType);
             executor.submit(() -> approvalReminderService.handleWebhookEvent(body));
             return Map.of("ok", true);
         }

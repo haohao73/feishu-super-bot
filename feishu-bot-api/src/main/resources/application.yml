@@ -80,7 +80,7 @@ feishu:
   encrypt-key: 
   verification-token:
   signature-verification-enabled: false # 未配置 encrypt_key 时保持 false，上线后改为 true
-  approval-code: "7641525625807506610" # 请假审批定义 code
+  approval-code: "E0766208-936F-47E0-AB9E-8847299540E2" # 请假审批定义 code
   review-chat-id: "oc_f751bd04fdf2ac64846673a7288c6721" # 代码审查结果发到哪个群
 
 # Gitee

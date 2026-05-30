@@ -124,7 +124,8 @@ CREATE TABLE IF NOT EXISTS bot_meeting (
 CREATE TABLE IF NOT EXISTS bot_approval_reminder (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     approval_id VARCHAR(64) NOT NULL COMMENT '飞书审批实例ID',
-    approver_id BIGINT NOT NULL COMMENT '审批人ID',
+    approver_id BIGINT NULL COMMENT '审批人ID（允许为空，飞书事件未提供时兜底）',
+    approver_open_id VARCHAR(64) NULL COMMENT '审批人飞书open_id（未注册bot_user时的兜底）',
     applicant_name VARCHAR(64) DEFAULT '' COMMENT '申请人姓名',
     title VARCHAR(128) DEFAULT '' COMMENT '审批标题',
     status TINYINT NOT NULL DEFAULT 1 COMMENT '1=待审批 2=已通过 3=已拒绝',

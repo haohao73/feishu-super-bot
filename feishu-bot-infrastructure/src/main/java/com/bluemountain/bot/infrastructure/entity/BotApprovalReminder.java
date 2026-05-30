@@ -20,6 +20,9 @@ public class BotApprovalReminder {
     /** 审批人 bot_user.id */
     private Long approverId;
 
+    /** 审批人飞书 open_id（bot_user 未注册时的兜底） */
+    private String approverOpenId;
+
     /** 申请人姓名 */
     private String applicantName;
 

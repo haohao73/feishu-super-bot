@@ -10,18 +10,20 @@ import com.bluemountain.bot.infrastructure.mapper.BotUserMapper;
 import com.bluemountain.bot.integration.client.FeishuClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 审批提醒服务
  *
- * 两个入口：
- * 1. handleWebhookEvent() → 飞书推送审批状态变更时调用，写 bot_approval_reminder 表
- * 2. checkAndRemind()    → 定时任务，查表筛选该催的 + 发私聊提醒
+ * 入口：
+ * - checkAndRemind() → 定时任务：从飞书 API 拉取待审批实例 → 同步到本地 → 发催办提醒
+ * - handleWebhookEvent() → Webhook 兜底，处理飞书主动推送的事件
  */
 @Slf4j
 @Service
@@ -32,26 +34,16 @@ public class ApprovalReminderService {
     private final BotApprovalReminderMapper reminderMapper;
     private final BotUserMapper userMapper;
 
+    @Value("${feishu.review-chat-id:}")
+    private String reviewChatId;
+
+    @Value("${feishu.approval-code:}")
+    private String approvalCode;
+
     // ================================================================
-    // 入口1：飞书 Webhook 推送审批事件 → 写入/更新 bot_approval_reminder
+    // 入口1：Webhook 兜底（飞书推送事件）
     // ================================================================
 
-    /**
-     * 处理飞书推送的审批实例事件
-     *
-     * 飞书推送 JSON 示例：
-     * {
-     *   "header": {"event_type": "approval_instance"},
-     *   "event": {
-     *     "type": "PENDING",              // PENDING / APPROVED / REJECTED
-     *     "instance_code": "7CACB4B6-xxx",
-     *     "approval_name": "请假",
-     *     "applicant_name": "张三",
-     *     "approver_id_list": ["ou_yyy"],
-     *     "start_time": "1716110000000"
-     *   }
-     * }
-     */
     @SuppressWarnings("unchecked")
     public void handleWebhookEvent(String body) {
         try {
@@ -59,76 +51,101 @@ public class ApprovalReminderService {
             JSONObject event = root.getJSONObject("event");
             if (event == null) return;
 
-            String status = event.getStr("type", "");  // PENDING / APPROVED / REJECTED
             String instanceCode = event.getStr("instance_code");
-            String approvalName = event.getStr("approval_name", "");
-            String applicantName = event.getStr("applicant_name", "");
-
             if (instanceCode == null) return;
 
-            // 查是否已存在
-            BotApprovalReminder exist = reminderMapper.selectOne(
-                    new LambdaQueryWrapper<BotApprovalReminder>()
-                            .eq(BotApprovalReminder::getApprovalId, instanceCode));
+            String rootType = root.getStr("type", "");
+            String eventType = event.getStr("type", "");
 
-            if (exist != null) {
-                // 状态变更：PENDING → APPROVED / REJECTED
-                int newStatus = "APPROVED".equals(status) ? 2 :
-                                "REJECTED".equals(status) ? 3 : exist.getStatus();
-                if (exist.getStatus() != newStatus) {
-                    exist.setStatus(newStatus);
-                    reminderMapper.updateById(exist);
-                    log.info("审批状态更新 | id={} status={}", instanceCode, status);
-                }
-                return;
+            String approvalName;
+            String applicantName;
+            String applicantOpenId;
+
+            if ("event_callback".equals(rootType)) {
+                approvalName = event.getStr("leave_type", eventType);
+                applicantName = event.getStr("leave_reason", "");
+                applicantOpenId = event.getStr("open_id", "");
+            } else {
+                approvalName = event.getStr("approval_name", eventType);
+                applicantName = event.getStr("applicant_name", "");
+                applicantOpenId = "";
             }
 
-            // 不是待审批的直接跳过
-            if (!"PENDING".equals(status)) return;
+            String status = eventType;
+            if ("event_callback".equals(rootType)) {
+                status = "PENDING"; // 提交即触发，催领导
+            }
 
-            // 取审批人 open_id
-            List<String> approverIdList = (List<String>) event.get("approver_id_list");
-            if (approverIdList == null || approverIdList.isEmpty()) return;
-            String approverOpenId = approverIdList.get(0);
-
-            BotUser approver = userMapper.selectByOpenId(approverOpenId);
-
-            BotApprovalReminder r = new BotApprovalReminder();
-            r.setApprovalId(instanceCode);
-            r.setApproverId(approver != null ? approver.getId() : null);
-            r.setApplicantName(applicantName);
-            r.setTitle(approvalName);
-            r.setStatus(1);
-            r.setRemindCount(0);
-            reminderMapper.insert(r);
-
-            log.info("新审批记录 | id={} title={} applicant={} approver={}",
-                    instanceCode, approvalName, applicantName,
-                    approver != null ? approver.getName() : "未注册");
-
+            syncInstance(instanceCode, status, approvalName, applicantName, applicantOpenId, event);
         } catch (Exception e) {
             log.error("处理审批 Webhook 事件失败", e);
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private void syncInstance(String instanceCode, String status, String approvalName,
+                              String applicantName, String applicantOpenId, JSONObject event) {
+        BotApprovalReminder exist = reminderMapper.selectOne(
+                new LambdaQueryWrapper<BotApprovalReminder>()
+                        .eq(BotApprovalReminder::getApprovalId, instanceCode));
+
+        if (exist != null) {
+            int newStatus = "APPROVED".equals(status) ? 2 :
+                            "REJECTED".equals(status) ? 3 :
+                            "PENDING".equals(status) ? 1 : exist.getStatus();
+            if (exist.getStatus() != newStatus) {
+                exist.setStatus(newStatus);
+                reminderMapper.updateById(exist);
+                log.info("审批状态更新 | id={} status={}", instanceCode, newStatus);
+            }
+            return;
+        }
+
+        if (!"PENDING".equals(status)) return;
+
+        BotUser approver = null;
+        List<String> approverIdList = event != null ? (List<String>) event.get("approver_id_list") : null;
+        if (approverIdList != null && !approverIdList.isEmpty()) {
+            approver = userMapper.selectByOpenId(approverIdList.get(0));
+        }
+        if (approver == null && !applicantOpenId.isBlank()) {
+            approver = userMapper.selectByOpenId(applicantOpenId);
+        }
+
+        String approverOpenId = (approverIdList != null && !approverIdList.isEmpty())
+                ? approverIdList.get(0) : applicantOpenId;
+
+        BotApprovalReminder r = new BotApprovalReminder();
+        r.setApprovalId(instanceCode);
+        r.setApproverId(approver != null ? approver.getId() : null);
+        r.setApproverOpenId(approverOpenId);
+        r.setApplicantName(applicantName);
+        r.setTitle(approvalName);
+        r.setStatus(1);
+        r.setRemindCount(0);
+        reminderMapper.insert(r);
+
+        log.info("新审批记录 | id={} title={} applicant={} approver={}",
+                instanceCode, approvalName, applicantName,
+                approver != null ? approver.getName() : "未注册");
+    }
+
     // ================================================================
-    // 入口2：定时任务 → 查表 + 催办
+    // 入口2：定时任务 → 主动拉取飞书审批 + 催办
     // ================================================================
 
-    /** 每 10 分钟执行 */
-    @Scheduled(cron = "0 */10 * * * *")
+    /** 每 10 秒执行 */
+    @Scheduled(cron = "*/10 * * * * *")
     public void checkAndRemind() {
-        // 筛出该催的：待审批 + 提醒次数 < 5 + 距上次提醒 > 1 小时
         List<BotApprovalReminder> toRemind = reminderMapper.selectList(
                 new LambdaQueryWrapper<BotApprovalReminder>()
                         .eq(BotApprovalReminder::getStatus, 1)
                         .lt(BotApprovalReminder::getRemindCount, 5)
                         .and(w -> w.isNull(BotApprovalReminder::getLastRemindTime)
                                 .or().lt(BotApprovalReminder::getLastRemindTime,
-                                        LocalDateTime.now().minusHours(1))));
+                                        LocalDateTime.now().minusSeconds(1))));
 
         if (toRemind.isEmpty()) {
-            log.debug("审批催办：无需提醒");
             return;
         }
 
@@ -138,14 +155,8 @@ public class ApprovalReminderService {
         }
     }
 
-    /** 给审批人发私聊催办消息 */
+    /** 发送催办提醒：优先私聊，都失败兜底群聊 */
     private void sendReminder(BotApprovalReminder r) {
-        BotUser approver = userMapper.selectById(r.getApproverId());
-        if (approver == null) {
-            log.warn("审批人未注册 | approverId={}", r.getApproverId());
-            return;
-        }
-
         String msg = String.format("""
                 ⚠ **审批提醒**
 
@@ -159,14 +170,54 @@ public class ApprovalReminderService {
                 r.getCreateTime() != null
                         ? r.getCreateTime().toString().replace("T", " ") : "-",
                 r.getRemindCount() + 1);
-//调用飞书发送给审批人
-        feishuClient.sendTextToUser(approver.getFeishuOpenId(), msg);
+
+        boolean sent = false;
+
+        // 1. bot_user 已有记录 → 直接用 bot 上下文的 open_id 发私聊
+        BotUser approver = userMapper.selectById(r.getApproverId());
+        if (approver != null) {
+            try {
+                feishuClient.sendTextToUser(approver.getFeishuOpenId(), msg);
+                sent = true;
+                log.info("审批提醒(私聊-bot) | id={} to={}", r.getApprovalId(), approver.getName());
+            } catch (Exception e) {
+                log.warn("私聊发送失败(bot) | id={}", r.getApprovalId());
+            }
+        }
+
+        // 2. approverId 为空 → 查 bot_user 中任意已注册用户发私聊
+        if (!sent) {
+            BotUser anyUser = userMapper.selectOne(new LambdaQueryWrapper<BotUser>()
+                    .isNotNull(BotUser::getFeishuOpenId)
+                    .last("LIMIT 1"));
+            if (anyUser != null) {
+                try {
+                    feishuClient.sendTextToUser(anyUser.getFeishuOpenId(), msg);
+                    sent = true;
+                    log.info("审批提醒(私聊-兜底用户) | id={} to={}", r.getApprovalId(), anyUser.getName());
+                } catch (Exception e) {
+                    log.warn("私聊发送失败(兜底用户) | id={}", r.getApprovalId());
+                }
+            }
+        }
+
+        // 3. 都没成功 → 发到审查群
+        if (!sent && reviewChatId != null && !reviewChatId.isBlank()) {
+            try {
+                feishuClient.sendTextMessage(reviewChatId, msg);
+                sent = true;
+                log.info("审批提醒(群聊兜底) | id={} chat={}", r.getApprovalId(), reviewChatId);
+            } catch (Exception e) {
+                log.error("群聊催办也失败了 | id={}", r.getApprovalId(), e);
+            }
+        }
+
+        if (!sent) {
+            log.warn("审批提醒发送失败 | id={}", r.getApprovalId());
+        }
 
         r.setRemindCount(r.getRemindCount() + 1);
         r.setLastRemindTime(LocalDateTime.now());
         reminderMapper.updateById(r);
-
-        log.info("审批提醒已发送 | id={} to={} count={}",
-                r.getApprovalId(), approver.getName(), r.getRemindCount());
     }
 }

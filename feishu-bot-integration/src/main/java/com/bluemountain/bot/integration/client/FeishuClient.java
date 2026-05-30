@@ -37,6 +37,7 @@ public class FeishuClient {
     private static final String CREATE_CHAT_URL = FEISHU_HOST + "/open-apis/im/v1/chats";
     private static final String GET_CHAT_URL = FEISHU_HOST + "/open-apis/im/v1/chats/";
     private static final String APPROVAL_LIST_URL = FEISHU_HOST + "/open-apis/approval/v4/instances";
+    private static final String GET_USER_URL = FEISHU_HOST + "/open-apis/contact/v3/users/";
 
     public FeishuClient() {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
@@ -168,8 +169,12 @@ public class FeishuClient {
     // ==================== 添加成员到群聊 ====================
 
     public void addMemberToChat(String chatId, String openId) {
+        addMembersToChat(chatId, java.util.List.of(openId));
+    }
+
+    public void addMembersToChat(String chatId, java.util.List<String> openIds) {
         String token = getTenantToken();
-        Map<String, Object> body = Map.of("id_list", java.util.List.of(openId));
+        Map<String, Object> body = Map.of("id_list", openIds);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(token);
@@ -180,7 +185,7 @@ public class FeishuClient {
             @SuppressWarnings("unchecked")
             Map<String, Object> resp = restTemplate.postForObject(url, request, Map.class);
             if (resp != null && (int) resp.get("code") == 0) {
-                log.info("成员添加成功 | chatId={} openId={}", chatId, openId);
+                log.info("成员添加成功 | chatId={} count={}", chatId, openIds.size());
             } else {
                 log.error("成员添加失败 | 响应={}", resp);
             }
@@ -322,6 +327,101 @@ public class FeishuClient {
         }
     }
 
+    // ==================== 用户信息 ====================
+
+    /**
+     * 通过姓名查找用户的 open_id 列表
+     *
+     * GET /open-apis/contact/v3/users?query=姓名&page_size=5
+     */
+    @SuppressWarnings("unchecked")
+    public List<String> findOpenIdsByName(String name) {
+        String token = getTenantToken();
+        String url = FEISHU_HOST + "/open-apis/contact/v3/users?query=" + name + "&page_size=5";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+
+        try {
+            Map<String, Object> resp = restTemplate.exchange(
+                    url, org.springframework.http.HttpMethod.GET,
+                    request, Map.class).getBody();
+
+            if (resp != null && (int) resp.get("code") == 0) {
+                Map<String, Object> data = (Map<String, Object>) resp.get("data");
+                List<Map<String, Object>> items = (List<Map<String, Object>>) data.get("items");
+                if (items != null) {
+                    return items.stream()
+                            .map(u -> (String) u.get("open_id"))
+                            .filter(id -> id != null)
+                            .toList();
+                }
+            }
+            log.warn("查找用户失败 | name={} resp={}", name, resp);
+        } catch (Exception e) {
+            log.error("查找用户异常 | name={}", name, e);
+        }
+        return List.of();
+    }
+
+    /**
+     * 通过 open_id 获取用户 union_id（跨应用通用标识）
+     */
+    @SuppressWarnings("unchecked")
+    public String getUnionIdByOpenId(String openId) {
+        String token = getTenantToken();
+        String url = GET_USER_URL + openId;
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+
+        try {
+            Map<String, Object> resp = restTemplate.exchange(
+                    url, org.springframework.http.HttpMethod.GET,
+                    request, Map.class).getBody();
+
+            if (resp != null && (int) resp.get("code") == 0) {
+                Map<String, Object> data = (Map<String, Object>) resp.get("data");
+                Map<String, Object> user = (Map<String, Object>) data.get("user");
+                if (user != null) {
+                    return (String) user.get("union_id");
+                }
+            }
+            log.warn("获取用户 union_id 失败 | openId={} resp={}", openId, resp);
+        } catch (Exception e) {
+            log.error("获取用户 union_id 异常 | openId={}", openId, e);
+        }
+        return null;
+    }
+
+    /**
+     * 通过 union_id 给用户发私聊（解决跨应用 open_id 不通用问题）
+     */
+    public void sendTextToUnionId(String unionId, String content) {
+        String token = getTenantToken();
+        String jsonContent = cn.hutool.json.JSONUtil.toJsonStr(Map.of("text", content));
+
+        Map<String, Object> body = Map.of(
+                "receive_id", unionId,
+                "msg_type", "text",
+                "content", jsonContent);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(token);
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+
+        try {
+            String url = FEISHU_HOST + "/open-apis/im/v1/messages?receive_id_type=union_id";
+            restTemplate.postForObject(url, request, Map.class);
+            log.info("私聊消息发送(union_id) | unionId={}", unionId);
+        } catch (Exception e) {
+            log.error("私聊消息发送失败(union_id) | unionId={}", unionId, e);
+        }
+    }
+
     // ==================== 审批 API ====================
 
     /**
@@ -337,11 +437,14 @@ public class FeishuClient {
     public List<Map<String, Object>> fetchApprovalInstances(String approvalCode, long startTime, long endTime) {
         String token = getTenantToken();
 
+        // 去掉 approval_code 过滤，拉取所有类型的审批实例
         String url = APPROVAL_LIST_URL
-                + "?approval_code=" + approvalCode
+                + "?page_size=50"
                 + "&start_time=" + startTime * 1000
-                + "&end_time=" + endTime * 1000
-                + "&page_size=50";
+                + "&end_time=" + endTime * 1000;
+        if (approvalCode != null && !approvalCode.isBlank()) {
+            url += "&approval_code=" + approvalCode;
+        }
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(token);
@@ -356,9 +459,16 @@ public class FeishuClient {
                 Map<String, Object> data = (Map<String, Object>) resp.get("data");
                 List<Map<String, Object>> list =
                         (List<Map<String, Object>>) data.get("instance_list");
+                log.info("拉取审批成功 | count={} approvalCode={}",
+                        list != null ? list.size() : 0, approvalCode);
+                if (list != null && !list.isEmpty()) {
+                    log.info("首个实例 | instance={}", list.get(0));
+                }
                 return list != null ? list : List.of();
             }
-            log.warn("拉取审批失败 | resp={}", resp);
+            log.warn("拉取审批失败 | code={} msg={}",
+                    resp != null ? resp.get("code") : -1,
+                    resp != null ? resp.get("msg") : "null");
             return List.of();
 
         } catch (Exception e) {
