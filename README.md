@@ -133,7 +133,7 @@ mvn spring-boot:run
 
 | 配置项 | 位置 | 说明 |
 |--------|------|------|
-| MySQL 连接 | application.yml | 默认 `127.0.0.1:3307`，密码 `cxy15320718422` |(端口是3307)
+| MySQL 连接 | application.yml + local | 默认 `127.0.0.1:3307`，用户名/密码在 application-local.yml 里填（已通过 `${MYSQL_PASSWORD}` 占位） |
 | Redis | application.yml | 默认 `localhost:6379` |
 | 飞书应用信息 | application.yml + local | app-id 固定，app-secret 在 local 里填 |
 | 百度翻译 | application-local.yml | 需注册百度翻译开放平台（免费版每月 200 万字符） |

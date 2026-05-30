@@ -18,9 +18,9 @@ spring:
   # 数据库 — MySQL
   # ============================================
   datasource:
-    url: jdbc:mysql://127.0.0.1:3307/feishu_bot?useSSL=false&allowPublicKeyRetrieval=true
-    username: root
-    password: cxy15320718422
+    url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3307}/feishu_bot?useSSL=false&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       minimum-idle: 5
