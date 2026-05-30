@@ -72,7 +72,9 @@ feishu_super_bot/
 ### 1. 克隆项目
 
 ```bash
-git clone https://gitee.com/haohao73/feishu_bot.git(gitee和github上均上传)
+git clone https://gitee.com/haohao73/feishu_bot.git
+git clone https://github.com/haohao73/feishu-super-bot.git
+(gitee和github上均上传)
 cd feishu_bot
 ```
 
