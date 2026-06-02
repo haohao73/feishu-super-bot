@@ -38,7 +38,7 @@
 | 数据库 | MySQL 5.7+, MyBatis-Plus 3.5.9 |
 | 缓存 | Redis 7, Redisson |
 | AI | DeepSeek（OpenAI 兼容接口） |
-| 工具 | Hutool, Lombok, RestTemplate |
+| 工具 | Hutool, Lombok, WebClient |
 | 鉴权 | 飞书 HMAC-SHA256 签名验证, OAuth 2.0 用户授权 |
 | 定时任务 | Spring @Scheduled |
 | 内网穿透 | natapp |
