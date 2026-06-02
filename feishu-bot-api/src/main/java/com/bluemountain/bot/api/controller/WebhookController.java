@@ -179,11 +179,10 @@ public class WebhookController {
 
         try {
             // ① 自动注册用户（首次发消息时在 bot_user 表创建记录）
-
-            /**
-             * 查到角色就直接返回,没有查到就自动注册进用户表,初始的权限都是user,管理员和超级管理员都是手动修改数据库
-             */
             userAutoRegister.ensureUser(openId, null);
+
+            // ② 每次收到消息都静默采集群名（广播时用群名替代 oc_xxx）
+            groupRegistry.collect(chatId);
 
             // ② 解析指令
             CommandContext ctx = CommandContext.parse(chatId, openId, messageId, messageText);
@@ -226,9 +225,6 @@ public class WebhookController {
                     extractArgs(ctx),
                     messageText,
                     reply);
-
-            // ⑤ 静默采集群名（失败不报错，广播时用）
-            groupRegistry.collect(chatId);
 
             status = 1; // 成功
 

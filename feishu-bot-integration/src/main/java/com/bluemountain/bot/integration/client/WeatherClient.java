@@ -1,25 +1,22 @@
 package com.bluemountain.bot.integration.client;
 
-import cn.hutool.json.JSONObject;
-import cn.hutool.json.JSONUtil;
 import com.bluemountain.bot.integration.dto.WeatherResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 
+import java.net.URI;
 import java.util.Map;
 
 /**
- * Open-Meteo 天气客户端 — 免费、无需注册、无需 API Key,和风天气调试出错了换个简单点的
+ * Open-Meteo 天气客户端 — 免费、无需注册、无需 API Key
  */
 @Slf4j
 @Component
 public class WeatherClient {
-    /**
-     * 就是 Java 的 HTTP 客户端，用来发 HTTP 请求的。
-     */
-    private final RestTemplate restTemplate;
+
+    private final WebClient webClient;
 
     /** 城市 → 经纬度 */
     private static final Map<String, double[]> CITY_MAP = Map.ofEntries(
@@ -59,13 +56,9 @@ public class WeatherClient {
     );
 
     public WeatherClient() {
-        //创建http连接工厂
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        //5秒内连不上就放弃
-        factory.setConnectTimeout(5000);
-        //10秒后没返回数据也放弃
-        factory.setReadTimeout(10000);
-        this.restTemplate = new RestTemplate(factory);
+        this.webClient = WebClient.builder()
+                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(512 * 1024))
+                .build();
     }
 
     public WeatherResponse getNow(String cityName) {
@@ -82,51 +75,34 @@ public class WeatherClient {
         log.info("查询天气 | 城市={} URL={}", cityName, url);
 
         try {
-            /**|
-             *
-             * // 第1行：发 HTTP GET 请求，返回 JSON 字符串
-             *   String json = restTemplate.getForObject(java.net.URI.create(url), String.class);
-             *   //           ↑ 这一行向 Open-Meteo 服务器发了 GET 请求，拿到原始 JSON 文本
-             *   // json = "{\"current\":{\"temperature_2m\":25.3,\"weather_code\":0,...}}"
-             *
-             *   // 第2行：把 JSON 字符串解析成对象，才能操作它
-             *   JSONObject root = JSONUtil.parseObj(json);
-             *   // root = {current: {...}}  ← 现在可以 root.getStr("xxx") 了
-             *
-             *   // 第3行：从整个 JSON 里取出 "current" 这个嵌套部分
-             *   JSONObject current = root.getJSONObject("current");
-             *   // current = {temperature_2m: 25.3, weather_code: 0, ...}
-             *
-             */
-            String json = restTemplate.getForObject(java.net.URI.create(url), String.class);
-            JSONObject root = JSONUtil.parseObj(json);
-            JSONObject current = root.getJSONObject("current");
+            Map<String, Object> resp = webClient.get()
+                    .uri(URI.create(url))
+                    .retrieve()
+                    .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                    .block();
 
-            WeatherResponse resp = new WeatherResponse();
-            resp.setCode("200");
-            resp.setUpdateTime(current.getStr("time"));
+            @SuppressWarnings("unchecked")
+            Map<String, Object> current = (Map<String, Object>) resp.get("current");
+
+            WeatherResponse dto = new WeatherResponse();
+            dto.setCode("200");
+            dto.setUpdateTime((String) current.get("time"));
 
             WeatherResponse.Now now = new WeatherResponse.Now();
-            //从json对象中按key去字符串
-            now.setTemp(current.getStr("temperature_2m"));
-            now.setFeelsLike(current.getStr("temperature_2m")); // Open-Meteo 无体感温度
-            now.setHumidity(current.getStr("relative_humidity_2m"));
-            now.setWindDir(current.getStr("wind_speed_10m") + " km/h");
+            now.setTemp(String.valueOf(current.get("temperature_2m")));
+            now.setFeelsLike(String.valueOf(current.get("temperature_2m")));
+            now.setHumidity(String.valueOf(current.get("relative_humidity_2m")));
+            now.setWindDir(current.get("wind_speed_10m") + " km/h");
 
-            int code = current.getInt("weather_code", 0);
+            int code = ((Number) current.get("weather_code")).intValue();
             now.setText(WEATHER_MAP.getOrDefault(code, "未知"));
 
-            resp.setNow(now);
-            return resp;
-            //返回给上面的handle
+            dto.setNow(now);
+            return dto;
 
         } catch (Exception e) {
             log.error("天气 API 调用失败 | 城市={}", cityName, e);
             return null;
         }
     }
-    /**
-     *
-     * 核心就是拼url参数,发请求,json解析,字段提取,封装dto并返回
-     */
 }

@@ -1,19 +1,17 @@
 package com.bluemountain.bot.integration.client;
 
-import cn.hutool.json.JSONUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
 /**
- * AI 大模型客户端 — DeepSeek
+ * AI 大模型客户端 — DeepSeek（OpenAI 兼容接口）
  */
 @Slf4j
 @Component
@@ -28,15 +26,12 @@ public class AiClient {
     @Value("${ai.base-url:https://api.deepseek.com}")
     private String baseUrl;
 
-    private final RestTemplate restTemplate;
+    private final WebClient webClient;
 
     public AiClient() {
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(5000);
-        factory.setReadTimeout(60000);
-        this.restTemplate = new RestTemplate(factory);
-        this.restTemplate.getMessageConverters()
-                .add(0, new org.springframework.http.converter.StringHttpMessageConverter(StandardCharsets.UTF_8));
+        this.webClient = WebClient.builder()
+                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(2 * 1024 * 1024))
+                .build();
     }
 
     /**
@@ -54,42 +49,36 @@ public class AiClient {
         }
 
         try {
-            /**
-             * 设定 ai的角色,用户 的具体问题(包含查询到的文档内容和用户 的问题)
-             */
             Map<String, Object> body = Map.of(
                     "model", model,
                     "messages", List.of(
                             Map.of("role", "system", "content", systemPrompt),
                             Map.of("role", "user", "content", userMessage)
                     ),
-                    //温度系数比较低,回答的比较保守
                     "temperature", 0.3,
-                    //最长1024个token
                     "max_tokens", 1024
             );
 
-            HttpHeaders headers = new HttpHeaders();
-             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(apiKey.trim());
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-
             log.info("AI 请求 | model={} prompt长度={}", model, userMessage.length());
 
-            String url = baseUrl + "/v1/chat/completions";
-            String json = restTemplate.postForObject(url, request, String.class);
-            //依旧拼接请求头请求体发送请求
-            Map<String, Object> resp = JSONUtil.parseObj(json);
+            Map<String, Object> resp = webClient.post()
+                    .uri(baseUrl + "/v1/chat/completions")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header("Authorization", "Bearer " + apiKey.trim())
+                    .bodyValue(body)
+                    .retrieve()
+                    .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                    .block();
+
             List<Map<String, Object>> choices = (List<Map<String, Object>>) resp.get("choices");
             if (choices == null || choices.isEmpty()) {
-                log.error("AI 返回异常 | 响应={}", json);
+                log.error("AI 返回异常 | 响应={}", resp);
                 return null;
             }
 
             Map<String, Object> msg = (Map<String, Object>) choices.get(0).get("message");
             String content = (String) msg.get("content");
             log.info("AI 回复 | 长度={}", content != null ? content.length() : 0);
-            //返回ai的回复
             return content;
 
         } catch (Exception e) {
