@@ -10,23 +10,24 @@
 | `/help` | 显示所有可用指令 | 所有人 |
 | `/weather <城市>` | 查询实时天气 | 所有人 |
 | `/translate <文本> [to 语言]` | 多语种翻译 | 所有人 |
-| `/group <群名>` | 一键创建飞书群聊 | 所有人 |
+| `/group <群名> [成员...]` | 创建群聊，支持按姓名或 open_id 拉人 | 所有人 |
 | `/schedule <时间> <事件>` | 创建日程并同步飞书日历 | 所有人（日历同步需 OAuth 授权） |
 | `/search <关键词>` | 搜索知识库文档 | 所有人 |
 | `/search-ai <问题>` | AI 阅读理解知识库并回答 | 所有人 |
 | `/gitlog <仓库路径>` | 查看仓库最近提交 | 所有人 |
 | `/gitdiff <仓库路径> <sha>` | 查看提交代码差异 | 所有人 |
 | `/review <代码片段>` | AI 代码审查 | 所有人 |
+| `/mergestatus <仓库路径> <PR编号>` | 查看 Pull Request 状态 | 所有人 |
 | `/broadcast [群名] \| 标题 \| 内容` | 消息广播 | ADMIN 及以上 |
 
 ### 系统功能
 
-- **多轮对话**：Redis 上下文记忆 + AI 意图解析,当开启第一轮指令后,后续可以不再输入标准斜杠指令,
-  用户的意图被ai解析后将会自动变成标准指令
+- **多轮对话**：Redis 上下文记忆 + AI 意图解析，首次输入指令后无需重复 `/` 前缀
 - **自动代码审查**：Gitee push Webhook 触发 AI 审查，结果自动推送飞书群
-- **审批催办**：飞书审批事件监听 + 定时任务自动催办(设定为五分钟查看一次符合审批提醒标准的审批清单进行催办)
-- **用户体系**：首次发消息自动注册 + 4 级角色权限
-- **群名映射**：自动采集群名，广播时用群名替代 `oc_xxx` 这种不可读 ID
+- **审批催办**：飞书审批事件监听 + 定时任务自动催办，私聊/群聊三层兜底发送
+- **PR 状态查询**：`/mergestatus` 查询 Gitee PR 的合并状态和冲突情况
+- **用户体系**：首次发消息自动注册 + 4 级角色权限（SUPER_ADMIN / ADMIN / USER / READONLY）
+- **群名映射**：自动采集群名存 Redis，广播时用群名替代 `oc_xxx` 不可读 ID
 
 ---
 
@@ -145,15 +146,148 @@ mvn spring-boot:run
 
 ---
 
+## Webhook 配置教程
+
+本项目使用两个 Webhook 端点接收外部推送：
+
+### 飞书 Webhook（消息 + 审批事件）
+
+**端点**：`POST /webhook/event`
+
+**配置位置**：飞书开放平台 → 事件订阅 → 请求网址
+
+```
+URL: http://feishubot.nat300.top/webhook/event  （或你的 natapp 域名）
+```
+
+**需订阅的事件**：
+
+| 事件名 | 用途 |
+|--------|------|
+| `im.message.receive_v1` | 接收用户@机器人的消息 |
+| `approval_instance` | 审批实例状态变更（提交/通过/拒绝） |
+| `leave_approval` | 请假审批事件 |
+
+**需要开通的权限**：
+
+| 权限 | 用途 |
+|------|------|
+| `im:message` | 发送消息 |
+| `im:chat` | 创建群聊、添加成员 |
+| `contact:contact.base:readonly` | 按姓名查 open_id（/group 拉人用） |
+| `calendar:calendar:write` | 同步日程到飞书日历 |
+| `approval:approval` | 访问审批应用 |
+
+### Gitee Webhook（Push 自动代码审查）
+
+**端点**：`POST /webhook/gitee`
+
+**配置位置**：Gitee 仓库 → 管理 → Webhooks → 添加
+
+| 配置项 | 值 |
+|--------|---|
+| URL | `http://feishubot.nat300.top/webhook/gitee` |
+| 事件 | Push |
+| 密码 | 留空（当前未开验签） |
+
+配置后每次 `git push`，Gitee 推送事件 → bot 自动获取 diff → AI 审查 → 结果发飞书群。
+
+### 调试 Webhook
+
+1. **curl 本地测试**：`curl -X POST http://localhost:8080/webhook/event -H "Content-Type: application/json" -d '{"type":"event_callback",...}'`
+2. **检查 natapp**：浏览器打开 `http://你的natapp域名/webhook/event`，有响应说明隧道通
+3. **飞书测试按钮**：飞书开放平台 → 事件订阅 → 点"测试"，看控制台有没有 `POST body:` 日志
+
+---
+
 ## 添加自定义指令
 
-1. 新建类 `XxxHandler.java`（放在 `feishu-bot-core/handler/`）
-2. 实现 `CommandPlugin` 接口：
-   - `name()` → 指令名（不含 `/`）
-   - `description()` → 一句话说明
-   - `execute(CommandContext ctx)` → 业务逻辑
-3. 标 `@Component`
+本项目使用**插件化指令框架**。新增一个指令只需 3 步，不改任何已有代码。
 
-Spring 自动发现，CommandRouter 自动收录，`/help` 自动展示。不改任何已有代码。
+### 步骤 1：新建 Handler 类
+
+在 `feishu-bot-core/src/main/java/.../handler/` 下新建类：
+
+```java
+package com.bluemountain.bot.core.handler;
+
+import com.bluemountain.bot.common.dto.CommandContext;
+import com.bluemountain.bot.plugin.CommandPlugin;
+import org.springframework.stereotype.Component;
+
+@Component  // ← Spring 自动发现
+public class MyHandler implements CommandPlugin {
+
+    @Override
+    public String name() {
+        return "mycommand";  // 指令名，用户输入 /mycommand
+    }
+
+    @Override
+    public String description() {
+        return "我的指令 — 用法：/mycommand 参数";
+    }
+
+    @Override
+    public String execute(CommandContext ctx) {
+        String args = ctx.getArgs();       // 拿参数
+        // ... 你的业务逻辑 ...
+        return "回复内容（支持飞书 Markdown）";
+    }
+}
+```
+
+### 步骤 2（可选）：需要调第三方 API 时
+
+在 `feishu-bot-integration` 模块建 Client 类：
+
+```java
+@Component
+public class MyClient {
+    private final WebClient webClient = WebClient.builder().build();
+
+    public String callApi(String param) {
+        return webClient.get()
+                .uri("https://api.xxx.com?param=" + param)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+    }
+}
+```
+
+然后在 Handler 里注入 `MyClient`，调它的方法。
+
+### 步骤 3（可选）：需要数据库时
+
+在 `feishu-bot-infrastructure` 模块建 Entity + Mapper：
+
+```java
+@Data
+@TableName("my_table")
+public class MyEntity {
+    @TableId(type = IdType.AUTO)
+    private Long id;
+    private String name;
+}
+
+@Mapper
+public interface MyMapper extends BaseMapper<MyEntity> {
+}
+```
+
+在 `sql/init.sql` 里加建表语句。
+
+### 关键约定
+
+| 约定 | 说明 |
+|------|------|
+| Handler 放 core 模块 | 实现 `CommandPlugin`，标 `@Component` |
+| Client 放 integration 模块 | 调第三方 API，标 `@Component` |
+| Entity/Mapper 放 infrastructure 模块 | 数据库操作，继承 `BaseMapper` |
+| 密钥放 `application-local.yml` | 不提交 Git |
+| API Host 放 `application.yml` | 可以提交 Git |
+
+写完 Handler 后重启项目，`/help` 自动展示新指令，`CommandRouter` 自动路由到它。**不改任何已有代码——这就是插件化框架的核心价值。**
 
 ---
