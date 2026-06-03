@@ -124,4 +124,37 @@ public class GiteeClient {
             return null;
         }
     }
+
+    /**
+     * 获取 Pull Request 状态
+     *
+     * GET https://gitee.com/api/v5/repos/{owner}/{repo}/pulls/{number}
+     *
+     * @param repoPath 仓库路径，如 "haohao73/feishu_bot"
+     * @param number   PR 编号
+     * @return PR 信息 Map，失败返回 null
+     */
+    public Map<String, Object> getPullRequest(String repoPath, int number) {
+        String url = GITEE_API + repoPath + "/pulls/" + number;
+
+        try {
+            Map<String, Object> resp = getWithAuth(url)
+                    .retrieve()
+                    .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                    .block();
+
+            if (resp != null && !resp.containsKey("message")) {
+                log.info("获取 PR 成功 | repo={} number={} title={}",
+                        repoPath, number, resp.get("title"));
+                return resp;
+            }
+            log.warn("获取 PR 失败 | repo={} number={} resp={}", repoPath, number, resp);
+            return null;
+
+        } catch (Exception e) {
+            log.warn("获取 PR 异常 | repo={} number={} msg={}",
+                    repoPath, number, e.getMessage());
+            return null;
+        }
+    }
 }
