@@ -1,3 +1,14 @@
+演示视频的补充:
+通过网盘分享的文件：屏幕录制 2026-06-04 181053.mp4 链接: https://pan.baidu.com/s/1801FRyX9WU71dFOKNUgN-Q?pwd=1111 提取码: 1111
+
+飞书群聊:
+通过网盘分享的文件：585cc67569fde2ada62bbf0d0650b04c.jpg
+链接: https://pan.baidu.com/s/1Kp-VBwC0LvBGY6DiWEkKoQ?pwd=1111 提取码: 1111
+
+演示视频:
+通过网盘分享的文件：屏幕录制 2026-05-31 150507.mp4 链接: https://pan.baidu.com/s/1-xS0u54ek0G8eCltjo0_1g?pwd=1111 提取码: 1111
+
+
 # 飞书超级助手 — 企业效率机器人
 
 基于 Spring Boot 3 的飞书群机器人，集成天气查询、翻译、日程创建、知识库 AI 问答、代码审查、消息广播等功能，通过 7 模块 Maven 项目 + 插件化指令框架实现。
