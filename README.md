@@ -756,11 +756,41 @@ feishu_super_bot/
 | 签名验证开关 | `application.yml` | `feishu.signature.enabled`：默认 `false`，生产环境务必开启 |
 
 ---
-附加文档如下
-1.项目设计文档:feishu_super_bot\spec.md
-2.数据库设计文档:feishu_super_bot\database-design.md
-3.Gitee集成:feishu_super_bot\Gitee集成与Git操作详解.md
-4.飞书测试群二维码:通过网盘分享的文件：585cc67569fde2ada62bbf0d0650b04c.jpg 链接: https://pan.baidu.com/s/1iAv3rrTCbn9Nv-EgsdE2yg 提取码: 1111
-5.视频演示:通过网盘分享的文件：屏幕录制 2026-05-31 150507.mp4
-链接: https://pan.baidu.com/s/1fIJRGdR3MI4kdLn2kMRQGQ?pwd=1111 提取码: 1111
-6.考核脚本:feishu_super_bot\飞书助手_演示脚本.md
+##  交付产物
+
+<div align="center">
+
+###  项目文档
+
+</div>
+
+| 文档 | 路径 | 说明 |
+|------|------|------|
+| **项目设计文档** | `spec.md` | 需求分析、技术选型、架构设计 |
+| **数据库设计文档** | `database-design.md` | 完整表结构、字段说明、索引设计 |
+| **Gitee 集成指南** | `Gitee集成与Git操作详解.md` | Gitee API 对接、Webhook 配置、Git 操作 |
+| **演示脚本** | `飞书助手_演示脚本.md` | 答辩演示流程、时间分配、12 个功能演示 |
+
+<div align="center">
+
+###  演示资源
+
+</div>
+
+| 资源 | 链接 |
+|------|------|
+| **演示视频** | [百度网盘](https://pan.baidu.com/s/1fIJRGdR3MI4kdLn2kMRQGQ?pwd=1111) 提取码: `1111` |
+| **补充视频** | [百度网盘](https://pan.baidu.com/s/1801FRyX9WU71dFOKNUgN-Q?pwd=1111) 提取码: `1111` |
+| **飞书测试群二维码** | [百度网盘](https://pan.baidu.com/s/1iAv3rrTCbn9Nv-EgsdE2yg) 提取码: `1111` |
+
+<div align="center">
+
+###  在线地址
+
+</div>
+
+| 平台 | 地址 |
+|------|------|
+| **GitHub** | [https://github.com/haohao73/feishu-super-bot](https://github.com/haohao73/feishu-super-bot) |
+| **Gitee** | [https://gitee.com/haohao73/feishu_bot](https://gitee.com/haohao73/feishu_bot) |
+| **飞书测试群** | 扫描上方二维码加入 |
