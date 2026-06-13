@@ -4,6 +4,9 @@
 
 **基于飞书开放平台的企业级智能效率机器人**
 
+> 演示视频: [百度网盘](https://pan.baidu.com/s/1-xS0u54ek0G8eCltjo0_1g?pwd=1111) 提取码: 1111
+> 补充视频: [百度网盘](https://pan.baidu.com/s/1801FRyX9WU71dFOKNUgN-Q?pwd=1111) 提取码: 1111
+
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.6-brightgreen?style=flat&logo=spring)](https://spring.io/projects/spring-boot)
 [![Java](https://img.shields.io/badge/Java-17-blue?style=flat&logo=openjdk)](https://www.oracle.com/java/)
 [![Maven](https://img.shields.io/badge/Maven-7模块多模块-C71A36?style=flat&logo=apachemaven)](https://maven.apache.org/)
